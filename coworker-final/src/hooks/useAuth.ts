@@ -56,7 +56,7 @@ export function useAuth() {
           id: userId,
           user_id: userId,
           full_name: user?.user_metadata?.full_name || 'Användare',
-          company_name: userCompany.companies.name,
+          company_name: userCompany?.companies?.[0]?.name || 'Mitt Företag',
           avatar_url: undefined,
           plan_type: 'professional',
           created_at: new Date().toISOString(),

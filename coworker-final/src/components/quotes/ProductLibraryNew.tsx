@@ -6,7 +6,6 @@ import { X, Plus, Search, Edit, Trash2, Package, Tag, DollarSign } from 'lucide-
 import { useAppearance } from '../../contexts/AppearanceContext'
 import { GlassCard, GlassButton } from '../ui/glass'
 import { ProductService } from '@/services/productService'
-import { Product as DatabaseProduct } from '@/lib/supabase'
 
 interface Product {
   id: string
@@ -15,6 +14,19 @@ interface Product {
   category: string
   price: number
   unit: string
+}
+
+interface DatabaseProduct {
+  id: string
+  company_id: string
+  name: string
+  description: string | null
+  category: string
+  price: number
+  unit: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
 }
 
 interface ProductLibraryProps {
@@ -130,7 +142,9 @@ const ProductLibrary: React.FC<ProductLibraryProps> = ({ isOpen, onClose, onSele
           unit: newProduct.unit || 'styck'
         })
         
-        setProducts(prev => [...prev, convertDatabaseProduct(createdProduct)])
+        if (createdProduct) {
+          setProducts(prev => [...prev, convertDatabaseProduct(createdProduct)])
+        }
         setNewProduct({
           name: '',
           description: '',
@@ -157,9 +171,11 @@ const ProductLibrary: React.FC<ProductLibraryProps> = ({ isOpen, onClose, onSele
           unit: editingProduct.unit
         })
         
-        setProducts(prev => prev.map(p => 
-          p.id === editingProduct.id ? convertDatabaseProduct(updatedProduct) : p
-        ))
+        if (updatedProduct) {
+          setProducts(prev => prev.map(p => 
+            p.id === editingProduct.id ? convertDatabaseProduct(updatedProduct) : p
+          ))
+        }
         setEditingProduct(null)
         loadStats() // Uppdatera statistik
       } catch (err) {
