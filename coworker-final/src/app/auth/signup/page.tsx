@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
 
 export default function SignUpPage() {
@@ -72,128 +73,210 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Skapa ditt konto
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Eller{' '}
-            <Link href="/auth/signin" className="font-medium text-blue-600 hover:text-blue-500">
-              logga in om du redan har ett konto
-            </Link>
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-gray-100 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <motion.div
+          className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-indigo-400/20 to-purple-600/20 rounded-full blur-3xl"
+          animate={{
+            x: [0, 100, 0],
+            y: [0, -100, 0],
+            scale: [1, 1.2, 1],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+        <motion.div
+          className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-emerald-400/20 to-teal-600/20 rounded-full blur-3xl"
+          animate={{
+            x: [0, -100, 0],
+            y: [0, 100, 0],
+            scale: [1.2, 1, 1.2],
+          }}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+      </div>
+
+      {/* Header */}
+      <motion.header 
+        className="relative z-10 bg-white/70 backdrop-blur-xl border-b border-white/20"
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.8 }}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <motion.div whileHover={{ scale: 1.05 }}>
+              <Link href="/" className="flex items-center space-x-3">
+                <div className="relative">
+                  <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 rounded-2xl flex items-center justify-center shadow-xl">
+                    <span className="text-white font-bold text-xl">C</span>
+                  </div>
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 rounded-2xl opacity-50 blur-xl"
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 3, repeat: Infinity }}
+                  />
+                </div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-indigo-900 to-purple-900 bg-clip-text text-transparent">
+                  CoWorker
+                </h1>
+              </Link>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.05 }}>
+              <Link href="/auth/signin" className="text-gray-700 hover:text-indigo-600 font-medium px-4 py-2 rounded-xl hover:bg-white/50 transition-all duration-300">
+                Har redan konto?
+              </Link>
+            </motion.div>
+          </div>
         </div>
-        
-        <form className="mt-8 space-y-6 bg-white p-8 rounded-lg shadow-md" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-          
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
-                Ditt namn
-              </label>
-              <input
-                id="fullName"
-                name="fullName"
-                type="text"
-                required
-                value={formData.fullName}
-                onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="För- och efternamn"
-              />
-            </div>
+      </motion.header>
 
-            <div>
-              <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
-                Företagsnamn
-              </label>
-              <input
-                id="companyName"
-                name="companyName"
-                type="text"
-                required
-                value={formData.companyName}
-                onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Ditt företags namn"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                E-postadress
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="din@email.com"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Lösenord
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Minst 6 tecken"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Bekräfta lösenord
-              </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Upprepa lösenordet"
-              />
-            </div>
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Skapar konto...' : 'Skapa konto'}
-            </button>
-          </div>
-
+      <div className="relative z-10 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <motion.div 
+          className="max-w-md w-full space-y-8"
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+        >
           <div className="text-center">
-            <Link href="/" className="text-blue-600 hover:text-blue-500 text-sm">
-              ← Tillbaka till startsidan
-            </Link>
+            <motion.h2 
+              className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-indigo-900 to-purple-900 bg-clip-text text-transparent mb-4"
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
+              Välkommen till framtiden
+            </motion.h2>
+            <motion.p 
+              className="text-gray-600 text-lg"
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+            >
+              Skapa ditt konto och börja hantera ditt företag som aldrig förr
+            </motion.p>
           </div>
-        </form>
+          
+          <motion.form 
+            className="mt-8 space-y-6 bg-white/40 backdrop-blur-xl p-8 rounded-3xl border border-white/20 shadow-2xl"
+            onSubmit={handleSubmit}
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.8 }}
+          >
+            {error && (
+              <motion.div 
+                className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl"
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {error}
+              </motion.div>
+            )}
+            
+            <div className="space-y-5">
+              {[
+                { name: 'fullName', label: 'Ditt namn', type: 'text', placeholder: 'För- och efternamn' },
+                { name: 'companyName', label: 'Företagsnamn', type: 'text', placeholder: 'Ditt företags namn' },
+                { name: 'email', label: 'E-postadress', type: 'email', placeholder: 'din@email.com' },
+                { name: 'password', label: 'Lösenord', type: 'password', placeholder: 'Minst 6 tecken' },
+                { name: 'confirmPassword', label: 'Bekräfta lösenord', type: 'password', placeholder: 'Upprepa lösenordet' }
+              ].map((field, index) => (
+                <motion.div
+                  key={field.name}
+                  initial={{ x: -50, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 1 + index * 0.1 }}
+                >
+                  <label htmlFor={field.name} className="block text-sm font-semibold text-gray-700 mb-2">
+                    {field.label}
+                  </label>
+                  <motion.input
+                    id={field.name}
+                    name={field.name}
+                    type={field.type}
+                    required
+                    value={formData[field.name as keyof typeof formData]}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-white/30 text-gray-900 placeholder-gray-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300"
+                    placeholder={field.placeholder}
+                    whileFocus={{ scale: 1.02 }}
+                  />
+                </motion.div>
+              ))}
+            </div>
+
+            <motion.div 
+              className="pt-4"
+              initial={{ y: 30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 1.5 }}
+            >
+              <motion.button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-xl"
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {loading ? (
+                  <motion.div
+                    className="flex items-center justify-center"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  >
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"></div>
+                    <span className="ml-2">Skapar konto...</span>
+                  </motion.div>
+                ) : (
+                  'Skapa konto gratis'
+                )}
+              </motion.button>
+            </motion.div>
+
+            <motion.div 
+              className="flex items-center justify-center space-x-6 pt-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 1.7 }}
+            >
+              {[
+                { icon: "✓", text: "30 dagar gratis" },
+                { icon: "✓", text: "Ingen bindning" },
+                { icon: "✓", text: "Svensk support" }
+              ].map((item, index) => (
+                <motion.div 
+                  key={index}
+                  className="flex items-center text-gray-500 text-sm bg-white/30 backdrop-blur-sm px-3 py-1 rounded-full"
+                  whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 255, 255, 0.5)" }}
+                >
+                  <span className="text-emerald-500 font-bold mr-1">{item.icon}</span>
+                  {item.text}
+                </motion.div>
+              ))}
+            </motion.div>
+
+            <motion.div 
+              className="text-center pt-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 1.9 }}
+            >
+              <Link href="/" className="text-gray-500 hover:text-indigo-600 text-sm transition-colors">
+                ← Tillbaka till startsidan
+              </Link>
+            </motion.div>
+          </motion.form>
+        </motion.div>
       </div>
     </div>
   )
