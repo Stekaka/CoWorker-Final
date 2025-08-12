@@ -17,7 +17,8 @@ import {
   X,
   Home,
   MessageSquare,
-  FileText
+  FileText,
+  Calendar
 } from 'lucide-react'
 import { GlassCard, GlassButton } from '../ui/glass'
 import { cn } from '../../lib/utils'
@@ -42,19 +43,21 @@ const navigation: NavigationItem[] = [
     name: 'Kunder',
     href: '/dashboard/contacts',
     icon: Users,
-    badge: 12,
   },
   {
     name: 'Affärer',
     href: '/dashboard/deals',
     icon: Briefcase,
-    badge: 5,
   },
   {
     name: 'Att göra',
     href: '/dashboard/tasks',
     icon: CheckSquare,
-    badge: 3,
+  },
+  {
+    name: 'Kalender',
+    href: '/dashboard/calendar-compact',
+    icon: Calendar,
   },
   {
     name: 'Aktiviteter',
@@ -65,7 +68,6 @@ const navigation: NavigationItem[] = [
     name: 'Offerter',
     href: '/dashboard/quotes',
     icon: FileText,
-    badge: 2,
   },
   {
     name: 'Inställningar',
