@@ -13,7 +13,7 @@ export class CustomerService {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User not authenticated')
 
-      const companyId = await UserCompanyService.getUserPrimaryCompany(user.id)
+  const companyId = await UserCompanyService.getUserPrimaryCompany()
       if (!companyId) throw new Error('User not associated with any company')
 
       const { data, error } = await supabase
@@ -53,7 +53,7 @@ export class CustomerService {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User not authenticated')
 
-      const companyId = await UserCompanyService.getUserPrimaryCompany(user.id)
+  const companyId = await UserCompanyService.getUserPrimaryCompany()
       if (!companyId) throw new Error('User not associated with any company')
 
       const insert: CustomerInsert = {
@@ -115,7 +115,7 @@ export class CustomerService {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User not authenticated')
 
-      const companyId = await UserCompanyService.getUserPrimaryCompany(user.id)
+  const companyId = await UserCompanyService.getUserPrimaryCompany()
       if (!companyId) throw new Error('User not associated with any company')
 
       const { data, error } = await supabase
@@ -139,7 +139,7 @@ export class CustomerService {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User not authenticated')
 
-      const companyId = await UserCompanyService.getUserPrimaryCompany(user.id)
+  const companyId = await UserCompanyService.getUserPrimaryCompany()
       if (!companyId) throw new Error('User not associated with any company')
 
       const { data, error } = await supabase

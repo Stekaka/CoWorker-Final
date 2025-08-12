@@ -1,0 +1,91 @@
+proname,definition
+handle_company_insert,"CREATE OR REPLACE FUNCTION public.handle_company_insert()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_user uuid := auth.uid();
+begin
+  if v_user is not null then
+    insert into public.user_companies(user_id, company_id, role)
+    values (v_user, new.id, 'owner')
+    on conflict do nothing;
+  end if;
+  return new;
+end;$function$
+"
+handle_new_user,"CREATE OR REPLACE FUNCTION public.handle_new_user()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_company_id uuid;
+  v_full_name text;
+  v_company_name text;
+begin
+  -- Extract metadata safely
+  v_full_name := null_if_empty(coalesce(new.raw_user_meta_data->>'full_name', ''));
+  v_company_name := null_if_empty(coalesce(new.raw_user_meta_data->>'company_name', ''));
+
+  -- Create profile
+  insert into public.profiles(id, full_name)
+  values (new.id, v_full_name)
+  on conflict (id) do nothing;
+
+  -- Create a company if no name provided, generate one
+  if v_company_name is null then
+    v_company_name := 'Company of ' || coalesce(new.email, left(new.id::text, 8));
+  end if;
+
+  insert into public.companies(name) values (v_company_name)
+  returning id into v_company_id;
+
+  -- Link user as owner
+  insert into public.user_companies(user_id, company_id, role)
+  values (new.id, v_company_id, 'owner')
+  on conflict do nothing;
+
+  return new;
+exception when others then
+  -- Do not block signup if anything fails; just continue
+  raise warning 'handle_new_user() warning: %', sqlerrm;
+  return new;
+end;$function$
+"
+is_company_member,"CREATE OR REPLACE FUNCTION public.is_company_member(p_company_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select exists (
+    select 1
+    from public.user_companies uc
+    where uc.company_id = p_company_id
+      and uc.user_id = auth.uid()
+  );
+$function$
+"
+null_if_empty,"CREATE OR REPLACE FUNCTION public.null_if_empty(text)
+ RETURNS text
+ LANGUAGE sql
+ IMMUTABLE
+AS $function$
+  select case when length(trim($1)) = 0 then null else trim($1) end
+$function$
+"
+set_updated_at,"CREATE OR REPLACE FUNCTION public.set_updated_at()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  new.updated_at = now();
+  return new;
+end;$function$
+"

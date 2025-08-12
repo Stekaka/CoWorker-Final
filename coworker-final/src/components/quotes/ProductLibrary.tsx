@@ -6,9 +6,6 @@ import { X, Plus, Search, Edit, Trash2, Package, Tag, DollarSign } from 'lucide-
 import { useAppearance } from '../../contexts/AppearanceContext'
 import { GlassCard, GlassButton } from '../ui/glass'
 import { ProductService } from '@/services/productService'
-import type { Database } from '@/types/database'
-
-type DatabaseProduct = Database['public']['Tables']['products']['Row']
 
 interface Product {
   id: string
@@ -52,26 +49,15 @@ const ProductLibrary: React.FC<ProductLibraryProps> = ({ isOpen, onClose, onSele
     unit: 'styck'
   })
 
-  // Konvertera databas-produkt till lokal interface
-  const convertDatabaseProduct = (dbProduct: DatabaseProduct): Product => ({
-    id: dbProduct.id,
-    name: dbProduct.name,
-    description: dbProduct.description || '',
-    category: dbProduct.category,
-    price: dbProduct.price,
-    unit: dbProduct.unit
-  })
-
   // Ladda produkter från databasen
   const loadProducts = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-      const dbProducts = await ProductService.getProducts()
-      const convertedProducts = dbProducts.map(convertDatabaseProduct)
-      setProducts(convertedProducts)
+  const dbProducts = await ProductService.getProducts()
+  setProducts(dbProducts)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ett fel uppstod')
+  setError(err instanceof Error ? err.message : 'Ett fel uppstod vid laddning av produkter')
       console.error('Error loading products:', err)
     } finally {
       setLoading(false)
@@ -124,7 +110,7 @@ const ProductLibrary: React.FC<ProductLibraryProps> = ({ isOpen, onClose, onSele
   const addProduct = async () => {
     if (newProduct.name && newProduct.category && newProduct.price) {
       try {
-        const createdProduct = await ProductService.createProduct({
+  const createdProduct = await ProductService.createProduct({
           name: newProduct.name,
           description: newProduct.description || '',
           category: newProduct.category,
@@ -132,9 +118,7 @@ const ProductLibrary: React.FC<ProductLibraryProps> = ({ isOpen, onClose, onSele
           unit: newProduct.unit || 'styck'
         })
         
-        if (createdProduct) {
-          setProducts(prev => [...prev, convertDatabaseProduct(createdProduct)])
-        }
+  if (createdProduct) await loadProducts()
         setNewProduct({
           name: '',
           description: '',
@@ -145,6 +129,7 @@ const ProductLibrary: React.FC<ProductLibraryProps> = ({ isOpen, onClose, onSele
         setShowAddForm(false)
         loadStats() // Uppdatera statistik
       } catch (err) {
+        console.error('Create product failed:', err)
         setError(err instanceof Error ? err.message : 'Kunde inte skapa produkt')
       }
     }
@@ -153,7 +138,7 @@ const ProductLibrary: React.FC<ProductLibraryProps> = ({ isOpen, onClose, onSele
   const updateProduct = async () => {
     if (editingProduct && editingProduct.name && editingProduct.category && editingProduct.price) {
       try {
-        const updatedProduct = await ProductService.updateProduct(editingProduct.id, {
+  const updatedProduct = await ProductService.updateProduct(editingProduct.id, {
           name: editingProduct.name,
           description: editingProduct.description,
           category: editingProduct.category,
@@ -161,14 +146,11 @@ const ProductLibrary: React.FC<ProductLibraryProps> = ({ isOpen, onClose, onSele
           unit: editingProduct.unit
         })
         
-        if (updatedProduct) {
-          setProducts(prev => prev.map(p => 
-            p.id === editingProduct.id ? convertDatabaseProduct(updatedProduct) : p
-          ))
-        }
+  if (updatedProduct) await loadProducts()
         setEditingProduct(null)
         loadStats() // Uppdatera statistik
       } catch (err) {
+        console.error('Update product failed:', err)
         setError(err instanceof Error ? err.message : 'Kunde inte uppdatera produkt')
       }
     }
@@ -177,9 +159,10 @@ const ProductLibrary: React.FC<ProductLibraryProps> = ({ isOpen, onClose, onSele
   const deleteProduct = async (id: string) => {
     try {
       await ProductService.deleteProduct(id)
-      setProducts(prev => prev.filter(p => p.id !== id))
+      await loadProducts()
       loadStats() // Uppdatera statistik
     } catch (err) {
+      console.error('Delete product failed:', err)
       setError(err instanceof Error ? err.message : 'Kunde inte ta bort produkt')
     }
   }
@@ -233,6 +216,11 @@ const ProductLibrary: React.FC<ProductLibraryProps> = ({ isOpen, onClose, onSele
           {/* Content */}
           <div className="flex-1 overflow-y-auto">
             <div className="p-6">
+              {error && (
+                <div className={`mb-4 p-4 rounded-lg border ${isDark ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-red-200 bg-red-50 text-red-700'}`}>
+                  <p>{error}</p>
+                </div>
+              )}
               {error && (
                 <div className="mb-4 p-4 bg-red-500/20 border border-red-500/30 rounded-lg">
                   <p className="text-red-400">{error}</p>

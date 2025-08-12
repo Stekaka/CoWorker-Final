@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { UserProfile } from '../types'
@@ -6,68 +6,70 @@ import { UserProfile } from '../types'
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
+  
   const [loading, setLoading] = useState(true)
+  const didInit = useRef(false)
+  const lastLoadedUserId = useRef<string | null>(null)
+  const inFlight = useRef(false)
+
+  const loadUserProfile = useCallback(async (userId: string) => {
+    if (inFlight.current) return
+    if (lastLoadedUserId.current === userId) return
+    inFlight.current = true
+    try {
+      // Basprofil endast från auth metadata (ingen RLS-känslig SELECT)
+      const baseProfile: UserProfile = {
+        id: userId,
+        user_id: userId,
+        full_name: (user as User | null)?.user_metadata?.full_name || 'Användare',
+        company_name: (user as User | null)?.user_metadata?.company_name || 'Mitt Företag',
+        avatar_url: undefined,
+        plan_type: 'professional',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+      setProfile(baseProfile)
+
+  // Ingen extra nätverksfråga här – undvik RLS-blockerade tabeller vid inloggning
+      lastLoadedUserId.current = userId
+    } catch (error) {
+      console.error('Error loading user profile:', error)
+    }
+    finally {
+      inFlight.current = false
+    }
+  }, [user])
 
   useEffect(() => {
-    // Hämta initial session
-    const getInitialSession = async () => {
+    if (didInit.current) return
+    didInit.current = true
+
+    // Hämta initial session (en gång)
+    const init = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-      
-      if (session?.user) {
-        await loadUserProfile(session.user.id)
-      }
-      
+      const u = session?.user ?? null
+      setUser(u)
+      if (u) await loadUserProfile(u.id)
       setLoading(false)
     }
+    init()
 
-    getInitialSession()
-
-    // Lyssna på auth-ändringar
+    // Lyssna på auth-ändringar (ignorera TOKEN_REFRESH för att undvika spam)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null)
-        
-        if (session?.user) {
-          await loadUserProfile(session.user.id)
-        } else {
+        const u = session?.user ?? null
+        setUser(u)
+        if (u && (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'PASSWORD_RECOVERY')) {
+          await loadUserProfile(u.id)
+        }
+        if (!u) {
           setProfile(null)
         }
-        
-        setLoading(false)
       }
     )
 
     return () => subscription.unsubscribe()
-  }, [])
-
-  const loadUserProfile = async (userId: string) => {
-    try {
-      // Hämta användarens företag
-      const { data: userCompany } = await supabase
-        .from('user_companies')
-        .select('companies(*)')
-        .eq('user_id', userId)
-        .eq('is_primary', true)
-        .single()
-
-      if (userCompany?.companies) {
-        const mockProfile: UserProfile = {
-          id: userId,
-          user_id: userId,
-          full_name: user?.user_metadata?.full_name || 'Användare',
-          company_name: userCompany?.companies?.[0]?.name || 'Mitt Företag',
-          avatar_url: undefined,
-          plan_type: 'professional',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-        setProfile(mockProfile)
-      }
-    } catch (error) {
-      console.error('Error loading user profile:', error)
-    }
-  }
+  }, [loadUserProfile])
 
   const signUp = async (email: string, password: string, fullName: string, companyName: string) => {
     const { data, error } = await supabase.auth.signUp({

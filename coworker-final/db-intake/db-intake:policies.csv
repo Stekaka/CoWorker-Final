@@ -1,0 +1,42 @@
+schemaname,tablename,policyname,permissive,roles,cmd,qual,with_check
+public,companies,companies_delete,PERMISSIVE,{public},DELETE,"(EXISTS ( SELECT 1
+   FROM user_companies uc
+  WHERE ((uc.company_id = companies.id) AND (uc.user_id = auth.uid()) AND (uc.role = 'owner'::user_role))))",null
+public,companies,companies_insert,PERMISSIVE,{authenticated},INSERT,null,true
+public,companies,companies_select,PERMISSIVE,{public},SELECT,is_company_member(id),null
+public,companies,companies_update,PERMISSIVE,{public},UPDATE,"(EXISTS ( SELECT 1
+   FROM user_companies uc
+  WHERE ((uc.company_id = companies.id) AND (uc.user_id = auth.uid()) AND (uc.role = ANY (ARRAY['owner'::user_role, 'admin'::user_role])))))",null
+public,contacts,contacts_all,PERMISSIVE,{public},ALL,is_company_member(company_id),is_company_member(company_id)
+public,customers,customers_all,PERMISSIVE,{public},ALL,is_company_member(company_id),is_company_member(company_id)
+public,notes,notes_all,PERMISSIVE,{public},ALL,is_company_member(company_id),is_company_member(company_id)
+public,order_items,order_items_mutate,PERMISSIVE,{public},ALL,"(EXISTS ( SELECT 1
+   FROM orders o
+  WHERE ((o.id = order_items.order_id) AND is_company_member(o.company_id))))","(EXISTS ( SELECT 1
+   FROM orders o
+  WHERE ((o.id = order_items.order_id) AND is_company_member(o.company_id))))"
+public,order_items,order_items_select,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM orders o
+  WHERE ((o.id = order_items.order_id) AND is_company_member(o.company_id))))",null
+public,orders,orders_all,PERMISSIVE,{public},ALL,is_company_member(company_id),is_company_member(company_id)
+public,products,products_all,PERMISSIVE,{public},ALL,is_company_member(company_id),is_company_member(company_id)
+public,profiles,profiles_insert_self,PERMISSIVE,{public},INSERT,null,(id = auth.uid())
+public,profiles,profiles_select_self,PERMISSIVE,{public},SELECT,(id = auth.uid()),null
+public,profiles,profiles_update_self,PERMISSIVE,{public},UPDATE,(id = auth.uid()),null
+public,quote_items,quote_items_mutate,PERMISSIVE,{public},ALL,"(EXISTS ( SELECT 1
+   FROM quotes q
+  WHERE ((q.id = quote_items.quote_id) AND is_company_member(q.company_id))))","(EXISTS ( SELECT 1
+   FROM quotes q
+  WHERE ((q.id = quote_items.quote_id) AND is_company_member(q.company_id))))"
+public,quote_items,quote_items_select,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM quotes q
+  WHERE ((q.id = quote_items.quote_id) AND is_company_member(q.company_id))))",null
+public,quotes,quotes_all,PERMISSIVE,{public},ALL,is_company_member(company_id),is_company_member(company_id)
+public,tasks,tasks_all,PERMISSIVE,{public},ALL,is_company_member(company_id),is_company_member(company_id)
+public,user_companies,user_companies_delete,PERMISSIVE,{public},DELETE,"(EXISTS ( SELECT 1
+   FROM user_companies uc
+  WHERE ((uc.company_id = user_companies.company_id) AND (uc.user_id = auth.uid()) AND (uc.role = 'owner'::user_role))))",null
+public,user_companies,user_companies_insert,PERMISSIVE,{public},INSERT,null,"((EXISTS ( SELECT 1
+   FROM user_companies uc
+  WHERE ((uc.company_id = uc.company_id) AND (uc.user_id = auth.uid()) AND (uc.role = ANY (ARRAY['owner'::user_role, 'admin'::user_role]))))) OR (user_id = auth.uid()))"
+public,user_companies,user_companies_select,PERMISSIVE,{public},SELECT,((user_id = auth.uid()) OR is_company_member(company_id)),null

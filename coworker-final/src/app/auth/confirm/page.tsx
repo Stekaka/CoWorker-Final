@@ -1,12 +1,20 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, MotionConfig, useReducedMotion } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
 
 export default function EmailConfirmPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen grid place-items-center text-white/70">Laddar…</div>}>
+      <EmailConfirmInner />
+    </Suspense>
+  )
+}
+
+function EmailConfirmInner() {
   const router = useRouter()
   const params = useSearchParams()
   const token_hash = params.get('token_hash')

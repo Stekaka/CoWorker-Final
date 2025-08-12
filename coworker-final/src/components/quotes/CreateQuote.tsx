@@ -6,6 +6,7 @@ import { X, Search, User, Calculator, Save, Send } from 'lucide-react'
 import { useAppearance } from '../../contexts/AppearanceContext'
 import { GlassCard, GlassButton } from '../ui/glass'
 import { CustomerService } from '@/services/customerService'
+import { QuoteService } from '@/services/quoteService'
 import type { Database } from '@/types/database'
 
 type DatabaseCustomer = Database['public']['Tables']['customers']['Row']
@@ -44,9 +45,10 @@ interface CreateQuoteProps {
   onClose: () => void
   products: Product[]
   customers: Customer[]
+  onQuoteCreated?: () => void
 }
 
-const CreateQuote: React.FC<CreateQuoteProps> = ({ isOpen, onClose, products }) => {
+const CreateQuote: React.FC<CreateQuoteProps> = ({ isOpen, onClose, products, onQuoteCreated }) => {
   const { getCurrentTheme } = useAppearance()
   const currentTheme = getCurrentTheme()
   const isDark = currentTheme === 'dark'
@@ -66,12 +68,12 @@ const CreateQuote: React.FC<CreateQuoteProps> = ({ isOpen, onClose, products }) 
 
   // Database customers
   const [databaseCustomers, setDatabaseCustomers] = useState<Customer[]>([])
-  const [loadingCustomers, setLoadingCustomers] = useState(false)
+  // const [loadingCustomers, setLoadingCustomers] = useState(false)
 
   // Load customers from database
   const loadCustomers = useCallback(async () => {
     try {
-      setLoadingCustomers(true)
+  // setLoadingCustomers(true)
       const dbCustomers = await CustomerService.getCustomers()
       
       // Convert database customer to local interface
@@ -92,7 +94,7 @@ const CreateQuote: React.FC<CreateQuoteProps> = ({ isOpen, onClose, products }) 
       // Fallback to empty array if database fails - mock data will be used in filtering
       setDatabaseCustomers([])
     } finally {
-      setLoadingCustomers(false)
+  // setLoadingCustomers(false)
     }
   }, [])
 
@@ -276,18 +278,89 @@ const CreateQuote: React.FC<CreateQuoteProps> = ({ isOpen, onClose, products }) 
   }
 
   const handleSave = (sendImmediately = false) => {
-    // Här skulle logiken för att spara offerten implementeras
-    console.log('Sparar offert:', {
-      customer: selectedCustomer || customCustomer,
-      items: quoteItems,
-      notes,
-      validUntil,
-      totals,
-      sendImmediately
-    })
-    
-    // Stäng modal efter sparning
-    handleClose()
+    const doSave = async () => {
+      try {
+        // Ensure we have a customer in DB
+        let customerId: string | null = null
+
+        // Determine if selected customer exists in DB list
+        const selectedIsDb = selectedCustomer
+          ? databaseCustomers.some((c) => c.id === selectedCustomer.id)
+          : false
+
+        if (selectedCustomer && selectedIsDb) {
+          customerId = selectedCustomer.id
+        } else {
+          // Create customer from selected or custom data
+          const base = selectedCustomer || customCustomer
+          if (!base || !base.name || !base.email) {
+            alert('Ange kundens namn och e-post')
+            return
+          }
+          const created = await CustomerService.createCustomer({
+            name: base.name,
+            email: base.email,
+            phone: base.phone || '',
+            company_name: base.company || '',
+            address: base.address || '',
+            city: base.city || '',
+            postal_code: base.postalCode || ''
+          })
+          if (!created) {
+            alert('Kunde inte skapa kund')
+            return
+          }
+          customerId = created.id
+        }
+
+        if (!customerId) {
+          alert('Ingen kund vald')
+          return
+        }
+
+        // Build items for DB
+        const dbItems = quoteItems.map((item, index) => ({
+          product_id: item.productId || null,
+          description: item.product.name,
+          quantity: item.quantity,
+          unit_price: item.product.price,
+          discount_percent: item.discount || 0,
+          total: item.total,
+          sort_order: index
+        }))
+
+        // Build quote data
+        const quote = await QuoteService.createQuote(
+          {
+            customer_id: customerId,
+            title: `Offert ${new Date().toLocaleDateString('sv-SE')}`,
+            status: sendImmediately ? 'sent' : 'draft',
+            subtotal: totals.discountedSubtotal,
+            tax_rate: taxRate,
+            tax_amount: totals.tax,
+            total_amount: totals.total,
+            global_discount: globalDiscount,
+            notes: notes || '',
+            valid_until: validUntil ? new Date(validUntil).toISOString() : null
+          },
+          dbItems
+        )
+
+        if (!quote) {
+          alert('Kunde inte spara offerten')
+          return
+        }
+
+        // Notify parent and close
+  if (onQuoteCreated) onQuoteCreated()
+        handleClose()
+      } catch (err) {
+        console.error('Error saving quote:', err)
+        alert('Ett fel uppstod vid sparning av offerten')
+      }
+    }
+
+    void doSave()
   }
 
   if (!isOpen) return null

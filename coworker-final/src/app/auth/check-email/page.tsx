@@ -1,10 +1,19 @@
 'use client'
 
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion, MotionConfig, useReducedMotion } from 'framer-motion'
 
 export default function CheckEmailPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen grid place-items-center text-white/70">Laddar…</div>}>
+      <CheckEmailInner />
+    </Suspense>
+  )
+}
+
+function CheckEmailInner() {
   const params = useSearchParams()
   const email = params.get('email')
   const prefersReducedMotion = useReducedMotion()

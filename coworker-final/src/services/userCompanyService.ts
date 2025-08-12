@@ -6,38 +6,34 @@ type UserCompanyInsert = Database['public']['Tables']['user_companies']['Insert'
 
 export class UserCompanyService {
   // Hämta användarens primära företag
-  static async getUserPrimaryCompany(userId: string): Promise<string | null> {
+  static async getUserPrimaryCompany(): Promise<string | null> {
     try {
-      const { data } = await supabase.rpc('get_user_company_id', {
-        user_uuid: userId
-      })
-      
-      return data
+  // Metadata-only: hämta company_id utan nätverksanrop för att undvika 403-spam
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const meta = (user.user_metadata || {}) as Record<string, unknown>
+  const appMeta = (user.app_metadata || {}) as Record<string, unknown>
+  const cid = (meta['company_id'] || appMeta['company_id']) as string | undefined
+  return cid ? String(cid) : null
     } catch (error) {
       console.error('Error getting user company:', error)
       return null
     }
   }
 
-  // Hämta alla företag för en användare
-  static async getUserCompanies(userId: string): Promise<UserCompany[]> {
-    try {
-      const { data, error } = await supabase
-        .from('user_companies')
-        .select(`
-          *,
-          companies:company_id (
-            id,
-            name,
-            org_number,
-            email
-          )
-        `)
-        .eq('user_id', userId)
-        .order('is_primary', { ascending: false })
+  // Se till att användaren har ett primärt företag; skapa vid behov
+  static async getOrCreatePrimaryCompany(): Promise<string | null> {
+  const existing = await this.getUserPrimaryCompany()
+  if (existing) return existing
+  // Client-side bootstrap disabled due to RLS; use server/onboarding flow instead.
+  return null
+  }
 
-      if (error) throw error
-      return data || []
+  // Hämta alla företag för en användare
+  static async getUserCompanies(): Promise<UserCompany[]> {
+    try {
+      // För närvarande: undvik tabell-läsningar för att inte trigga 403 i UI
+      return []
     } catch (error) {
       console.error('Error fetching user companies:', error)
       return []

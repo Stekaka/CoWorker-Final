@@ -1,0 +1,11 @@
+table_name,trigger_name,event,action_timing
+companies,companies_set_updated_at,UPDATE,BEFORE
+companies,on_company_created,INSERT,AFTER
+contacts,contacts_set_updated_at,UPDATE,BEFORE
+customers,customers_set_updated_at,UPDATE,BEFORE
+notes,notes_set_updated_at,UPDATE,BEFORE
+orders,orders_set_updated_at,UPDATE,BEFORE
+products,products_set_updated_at,UPDATE,BEFORE
+profiles,profiles_set_updated_at,UPDATE,BEFORE
+quotes,quotes_set_updated_at,UPDATE,BEFORE
+tasks,tasks_set_updated_at,UPDATE,BEFORE

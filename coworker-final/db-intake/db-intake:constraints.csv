@@ -1,0 +1,101 @@
+table_name,constraint_type,constraint_name,column_name,foreign_table,foreign_column
+companies,CHECK,25302_25330_1_not_null,null,null,null
+companies,CHECK,25302_25330_2_not_null,null,null,null
+companies,CHECK,25302_25330_3_not_null,null,null,null
+companies,CHECK,25302_25330_4_not_null,null,null,null
+companies,PRIMARY KEY,companies_pkey,id,companies,id
+contacts,CHECK,25302_25405_1_not_null,null,null,null
+contacts,CHECK,25302_25405_2_not_null,null,null,null
+contacts,CHECK,25302_25405_3_not_null,null,null,null
+contacts,CHECK,25302_25405_8_not_null,null,null,null
+contacts,CHECK,25302_25405_9_not_null,null,null,null
+contacts,FOREIGN KEY,contacts_company_id_fkey,company_id,companies,id
+contacts,FOREIGN KEY,contacts_created_by_fkey,created_by,null,null
+contacts,PRIMARY KEY,contacts_pkey,id,contacts,id
+customers,CHECK,25302_25383_10_not_null,null,null,null
+customers,CHECK,25302_25383_1_not_null,null,null,null
+customers,CHECK,25302_25383_2_not_null,null,null,null
+customers,CHECK,25302_25383_3_not_null,null,null,null
+customers,CHECK,25302_25383_9_not_null,null,null,null
+customers,FOREIGN KEY,customers_company_id_fkey,company_id,companies,id
+customers,FOREIGN KEY,customers_created_by_fkey,created_by,null,null
+customers,PRIMARY KEY,customers_pkey,id,customers,id
+notes,CHECK,25302_25625_1_not_null,null,null,null
+notes,CHECK,25302_25625_2_not_null,null,null,null
+notes,CHECK,25302_25625_3_not_null,null,null,null
+notes,CHECK,25302_25625_4_not_null,null,null,null
+notes,CHECK,25302_25625_5_not_null,null,null,null
+notes,CHECK,25302_25625_7_not_null,null,null,null
+notes,CHECK,25302_25625_8_not_null,null,null,null
+notes,FOREIGN KEY,notes_company_id_fkey,company_id,companies,id
+notes,FOREIGN KEY,notes_created_by_fkey,created_by,null,null
+notes,PRIMARY KEY,notes_pkey,id,notes,id
+order_items,CHECK,25302_25555_1_not_null,null,null,null
+order_items,CHECK,25302_25555_2_not_null,null,null,null
+order_items,CHECK,25302_25555_5_not_null,null,null,null
+order_items,CHECK,25302_25555_6_not_null,null,null,null
+order_items,CHECK,25302_25555_7_not_null,null,null,null
+order_items,FOREIGN KEY,order_items_order_id_fkey,order_id,orders,id
+order_items,PRIMARY KEY,order_items_pkey,id,order_items,id
+order_items,FOREIGN KEY,order_items_product_id_fkey,product_id,products,id
+orders,CHECK,25302_25525_1_not_null,null,null,null
+orders,CHECK,25302_25525_2_not_null,null,null,null
+orders,CHECK,25302_25525_4_not_null,null,null,null
+orders,CHECK,25302_25525_5_not_null,null,null,null
+orders,CHECK,25302_25525_6_not_null,null,null,null
+orders,CHECK,25302_25525_8_not_null,null,null,null
+orders,CHECK,25302_25525_9_not_null,null,null,null
+orders,FOREIGN KEY,orders_company_id_fkey,company_id,companies,id
+orders,FOREIGN KEY,orders_created_by_fkey,created_by,null,null
+orders,FOREIGN KEY,orders_customer_id_fkey,customer_id,customers,id
+orders,PRIMARY KEY,orders_pkey,id,orders,id
+products,CHECK,25302_25427_10_not_null,null,null,null
+products,CHECK,25302_25427_11_not_null,null,null,null
+products,CHECK,25302_25427_1_not_null,null,null,null
+products,CHECK,25302_25427_2_not_null,null,null,null
+products,CHECK,25302_25427_3_not_null,null,null,null
+products,CHECK,25302_25427_6_not_null,null,null,null
+products,CHECK,25302_25427_7_not_null,null,null,null
+products,FOREIGN KEY,products_company_id_fkey,company_id,companies,id
+products,FOREIGN KEY,products_created_by_fkey,created_by,null,null
+products,PRIMARY KEY,products_pkey,id,products,id
+profiles,CHECK,25302_25341_1_not_null,null,null,null
+profiles,CHECK,25302_25341_4_not_null,null,null,null
+profiles,CHECK,25302_25341_5_not_null,null,null,null
+profiles,FOREIGN KEY,profiles_id_fkey,id,null,null
+profiles,PRIMARY KEY,profiles_pkey,id,profiles,id
+quote_items,CHECK,25302_25492_1_not_null,null,null,null
+quote_items,CHECK,25302_25492_2_not_null,null,null,null
+quote_items,CHECK,25302_25492_5_not_null,null,null,null
+quote_items,CHECK,25302_25492_6_not_null,null,null,null
+quote_items,CHECK,25302_25492_7_not_null,null,null,null
+quote_items,PRIMARY KEY,quote_items_pkey,id,quote_items,id
+quote_items,FOREIGN KEY,quote_items_product_id_fkey,product_id,products,id
+quote_items,FOREIGN KEY,quote_items_quote_id_fkey,quote_id,quotes,id
+quotes,CHECK,25302_25461_10_not_null,null,null,null
+quotes,CHECK,25302_25461_1_not_null,null,null,null
+quotes,CHECK,25302_25461_2_not_null,null,null,null
+quotes,CHECK,25302_25461_4_not_null,null,null,null
+quotes,CHECK,25302_25461_5_not_null,null,null,null
+quotes,CHECK,25302_25461_6_not_null,null,null,null
+quotes,CHECK,25302_25461_9_not_null,null,null,null
+quotes,FOREIGN KEY,quotes_company_id_fkey,company_id,companies,id
+quotes,FOREIGN KEY,quotes_created_by_fkey,created_by,null,null
+quotes,FOREIGN KEY,quotes_customer_id_fkey,customer_id,customers,id
+quotes,PRIMARY KEY,quotes_pkey,id,quotes,id
+tasks,CHECK,25302_25585_10_not_null,null,null,null
+tasks,CHECK,25302_25585_1_not_null,null,null,null
+tasks,CHECK,25302_25585_2_not_null,null,null,null
+tasks,CHECK,25302_25585_3_not_null,null,null,null
+tasks,CHECK,25302_25585_5_not_null,null,null,null
+tasks,CHECK,25302_25585_9_not_null,null,null,null
+tasks,FOREIGN KEY,tasks_assigned_to_fkey,assigned_to,null,null
+tasks,FOREIGN KEY,tasks_company_id_fkey,company_id,companies,id
+tasks,FOREIGN KEY,tasks_created_by_fkey,created_by,null,null
+tasks,PRIMARY KEY,tasks_pkey,id,tasks,id
+user_companies,CHECK,25302_25363_1_not_null,null,null,null
+user_companies,CHECK,25302_25363_2_not_null,null,null,null
+user_companies,CHECK,25302_25363_3_not_null,null,null,null
+user_companies,CHECK,25302_25363_4_not_null,null,null,null
+user_companies,FOREIGN KEY,user_companies_company_id_fkey,company_id,companies,id
+user_companies,PRIMARY KEY,user_companies_pkey,user_id,user_companies,user_id

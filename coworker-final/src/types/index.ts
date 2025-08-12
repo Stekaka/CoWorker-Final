@@ -126,3 +126,125 @@ export type Database = {
     }
   }
 }
+
+// Lightweight CRM demo types used by mock services and UI components
+export interface Contact {
+  id: string
+  user_id: string
+  name: string
+  email?: string | null
+  phone?: string | null
+  company?: string | null
+  position?: string | null
+  type?: 'person' | 'company'
+  status?: 'active' | 'prospect' | 'inactive'
+  source?: string | null
+  notes?: string | null
+  address?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Deal {
+  id: string
+  user_id: string
+  contact_id: string
+  title: string
+  description?: string | null
+  amount: number
+  currency: string
+  stage: 'prospect' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost'
+  probability?: number
+  expected_close_date?: string | null
+  actual_close_date?: string | null
+  source?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Task {
+  id: string
+  user_id: string
+  contact_id?: string | null
+  deal_id?: string | null
+  title: string
+  description?: string | null
+  completed: boolean
+  due_date?: string | null
+  assigned_to?: string | null
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  category?: string | null
+  completed_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Activity {
+  id: string
+  user_id: string
+  contact_id?: string | null
+  deal_id?: string | null
+  type: 'call' | 'email' | 'meeting' | 'note' | 'task'
+  title: string
+  description?: string | null
+  date: string
+  duration_minutes?: number | null
+  outcome?: string | null
+  next_action?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface DashboardStats {
+  total_contacts: number
+  total_deals: number
+  total_revenue: number
+  deals_won_this_month: number
+  pipeline_value: number
+  conversion_rate: number
+  average_deal_size: number
+  tasks_due_today: number
+}
+
+// Basic user profile shape used by useAuth
+export interface UserProfile {
+  id: string
+  user_id: string
+  full_name: string
+  company_name?: string | null
+  avatar_url?: string | null
+  plan_type?: 'free' | 'professional' | 'enterprise'
+  created_at: string
+  updated_at: string
+}
+
+// Lightweight pipeline types for demo/services compatibility
+export interface DealStage {
+  id: string
+  user_id: string
+  name: string
+  order?: number | null
+  probability?: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Pipeline {
+  id: string
+  user_id: string
+  name: string
+  is_default?: boolean
+  created_at: string
+  updated_at: string
+  stages?: DealStage[]
+}
+
+export interface TimelineEvent {
+  id: string
+  contact_id: string
+  type: 'note' | 'call' | 'email' | 'meeting' | 'task'
+  title: string
+  description?: string | null
+  date: string
+  created_at: string
+}

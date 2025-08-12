@@ -6,7 +6,7 @@ import { X, Download, Send } from 'lucide-react'
 import { useAppearance } from '../../contexts/AppearanceContext'
 import { GlassCard, GlassButton } from '../ui/glass'
 
-interface Product {
+export interface Product {
   id: string
   name: string
   description: string
@@ -15,16 +15,16 @@ interface Product {
   category: string
 }
 
-interface QuoteItem {
+export interface QuoteItem {
   id: string
-  productId: string
+  productId: string | null
   product: Product
   quantity: number
   discount: number
   total: number
 }
 
-interface Customer {
+export interface Customer {
   id: string
   name: string
   email: string
@@ -35,13 +35,14 @@ interface Customer {
   postalCode: string
 }
 
-interface Quote {
+export interface Quote {
   id: string
   quoteNumber: string
   customer: Customer
   items: QuoteItem[]
   subtotal: number
   tax: number
+  taxRate: number
   discount: number
   total: number
   validUntil: string
@@ -57,7 +58,7 @@ interface QuoteViewerProps {
   isOpen: boolean
   onClose: () => void
   onDownloadPDF: (quote: Quote) => void
-  onSendQuote: (quote: Quote) => void
+  onSendQuote: (quote: Quote) => void | Promise<void>
 }
 
 const QuoteViewer: React.FC<QuoteViewerProps> = ({ quote, isOpen, onClose, onDownloadPDF, onSendQuote }) => {
@@ -245,7 +246,7 @@ const QuoteViewer: React.FC<QuoteViewerProps> = ({ quote, isOpen, onClose, onDow
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span>Moms (25%):</span>
+                      <span>Moms ({quote.taxRate}%):</span>
                       <span>{quote.tax.toLocaleString('sv-SE')} kr</span>
                     </div>
                     <div className="border-t border-gray-300 pt-2">

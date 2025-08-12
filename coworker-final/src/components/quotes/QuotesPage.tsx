@@ -1,59 +1,18 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Plus, Search, FileText, Send, Download, Eye, Edit, Package, DollarSign, CheckCircle, Clock, AlertCircle } from 'lucide-react'
 import { useAppearance } from '../../contexts/AppearanceContext'
 import { GlassCard, GlassButton } from '../ui/glass'
 import CreateQuote from './CreateQuote'
 import ProductLibrary from './ProductLibrary'
-import QuoteViewer from './QuoteViewer'
+import QuoteViewer, { type Quote, type QuoteItem, type Product } from './QuoteViewer'
+import { ProductService } from '@/services/productService'
+import { QuoteService, type QuoteWithItems } from '@/services/quoteService'
+import type { Database } from '@/types/database'
 
-interface Product {
-  id: string
-  name: string
-  description: string
-  price: number
-  unit: string
-  category: string
-}
-
-interface QuoteItem {
-  id: string
-  productId: string
-  product: Product
-  quantity: number
-  discount: number
-  total: number
-}
-
-interface Customer {
-  id: string
-  name: string
-  email: string
-  phone: string
-  company: string
-  address: string
-  city: string
-  postalCode: string
-}
-
-interface Quote {
-  id: string
-  quoteNumber: string
-  customer: Customer
-  items: QuoteItem[]
-  subtotal: number
-  tax: number
-  discount: number
-  total: number
-  validUntil: string
-  status: 'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired'
-  createdAt: string
-  sentAt?: string
-  viewedAt?: string
-  notes: string
-}
+// Types are re-exported from QuoteViewer to keep a single source of truth
 
 const QuotesPage: React.FC = () => {
   const { getCurrentTheme } = useAppearance()
@@ -68,124 +27,77 @@ const QuotesPage: React.FC = () => {
   const [showProductLibrary, setShowProductLibrary] = useState(false)
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null)
 
-  // Mock data för demo
-  useEffect(() => {
-    const mockProducts: Product[] = [
-      {
-        id: '1',
-        name: 'Webbdesign Konsultation',
-        description: 'Initial konsultation och analys av webbdesignbehov',
-        price: 1500,
-        unit: 'timmar',
-        category: 'Konsultation'
-      },
-      {
-        id: '2',
-        name: 'Responsiv Webbsida',
-        description: 'Komplett responsiv webbsida med modern design',
-        price: 25000,
-        unit: 'styck',
-        category: 'Webbutveckling'
-      },
-      {
-        id: '3',
-        name: 'SEO Optimering',
-        description: 'Sökmotoroptimering för bättre synlighet',
-        price: 8000,
-        unit: 'månad',
-        category: 'Marknadsföring'
-      },
-      {
-        id: '4',
-        name: 'CRM Integration',
-        description: 'Integration med befintligt CRM-system',
-        price: 15000,
-        unit: 'styck',
-        category: 'Integration'
-      }
-    ]
+  // helper types for quotes mapping
+  type DbCustomer = Database['public']['Tables']['customers']['Row']
+  type DbQuoteItem = Database['public']['Tables']['quote_items']['Row']
 
-    const mockQuotes: Quote[] = [
-      {
-        id: '1',
-        quoteNumber: 'OFF-2025-001',
-        customer: {
-          id: '1',
-          name: 'Anna Andersson',
-          email: 'anna@techinnovate.se',
-          phone: '070-123 45 67',
-          company: 'Tech Innovate AB',
-          address: 'Storgatan 15',
-          city: 'Stockholm',
-          postalCode: '11122'
-        },
-        items: [
-          {
-            id: '1',
-            productId: '2',
-            product: mockProducts[1],
-            quantity: 1,
-            discount: 0,
-            total: 25000
-          },
-          {
-            id: '2',
-            productId: '3',
-            product: mockProducts[2],
-            quantity: 3,
-            discount: 10,
-            total: 21600
-          }
-        ],
-        subtotal: 49000,
-        tax: 12250,
-        discount: 2400,
-        total: 58850,
-        validUntil: '2025-09-11',
-        status: 'sent',
-        createdAt: '2025-08-01',
-        sentAt: '2025-08-01',
-        notes: 'Kunden är intresserad av en långsiktig lösning'
-      },
-      {
-        id: '2',
-        quoteNumber: 'OFF-2025-002',
-        customer: {
-          id: '2',
-          name: 'Erik Nilsson',
-          email: 'erik@designstudio.se',
-          phone: '070-987 65 43',
-          company: 'Design Studio',
-          address: 'Designgatan 8',
-          city: 'Göteborg',
-          postalCode: '41122'
-        },
-        items: [
-          {
-            id: '3',
-            productId: '1',
-            product: mockProducts[0],
-            quantity: 10,
-            discount: 15,
-            total: 12750
-          }
-        ],
-        subtotal: 15000,
-        tax: 3187.50,
-        discount: 2250,
-        total: 15937.50,
-        validUntil: '2025-08-25',
-        status: 'viewed',
-        createdAt: '2025-08-05',
-        sentAt: '2025-08-05',
-        viewedAt: '2025-08-06',
-        notes: ''
+  // helper: map DB quote to UI quote
+  const mapDbQuoteToUi = useCallback((q: QuoteWithItems): Quote => {
+    const customer = q.customer as unknown as DbCustomer | undefined
+    const items = (q.items || []).map((it: DbQuoteItem) => {
+      const fallbackProduct: Product = {
+        id: it.product_id || 'custom',
+        name: it.description,
+        description: it.description,
+        price: it.unit_price,
+        unit: 'styck',
+        category: ''
       }
-    ]
+      return {
+        id: it.id,
+        productId: it.product_id,
+        product: fallbackProduct,
+        quantity: it.quantity,
+        discount: it.discount_percent || 0,
+        total: it.total,
+      } as QuoteItem
+    })
 
-    setProducts(mockProducts)
-    setQuotes(mockQuotes)
+    return {
+      id: q.id,
+      quoteNumber: q.quote_number,
+  customer: customer ? {
+        id: customer.id,
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone || '',
+        company: customer.company_name || '',
+        address: customer.address || '',
+        city: customer.city || '',
+        postalCode: customer.postal_code || ''
+      } : {
+        id: '', name: '', email: '', phone: '', company: '', address: '', city: '', postalCode: ''
+      },
+      items,
+      subtotal: q.subtotal,
+      tax: q.tax_amount,
+      taxRate: q.tax_rate ?? 25,
+      discount: q.global_discount || 0,
+      total: q.total_amount,
+      validUntil: q.valid_until || new Date().toISOString(),
+      status: q.status,
+      createdAt: q.created_at,
+      sentAt: q.sent_at || undefined,
+      viewedAt: q.viewed_at || undefined,
+      notes: q.notes || ''
+    }
   }, [])
+
+  const loadProducts = useCallback(async () => {
+    const uiProducts = await ProductService.getProducts()
+    setProducts(uiProducts)
+  }, [])
+
+  const loadQuotes = useCallback(async () => {
+    const dbQuotes = await QuoteService.getQuotes()
+    setQuotes(dbQuotes.map(mapDbQuoteToUi))
+  }, [mapDbQuoteToUi])
+
+  useEffect(() => {
+    // load initial data
+    loadProducts()
+    loadQuotes()
+  }, [loadProducts, loadQuotes])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -230,10 +142,17 @@ const QuotesPage: React.FC = () => {
     alert(`PDF för ${quote.quoteNumber} skulle laddas ner här. Implementation kommer snart!`)
   }
 
-  const handleSendQuote = (quote: Quote) => {
-    // Här skulle vi implementera e-postfunktionalitet
-    console.log('Sending quote:', quote.quoteNumber)
-    alert(`Offert ${quote.quoteNumber} skulle skickas till ${quote.customer.email}. Implementation kommer snart!`)
+  const handleSendQuote = async (quote: Quote) => {
+    try {
+      const updated = await QuoteService.markQuoteAsSent(quote.id)
+      if (updated) {
+        await loadQuotes()
+        alert(`Offert ${quote.quoteNumber} markerad som skickad.`)
+      }
+    } catch (e) {
+      console.error(e)
+      alert('Kunde inte markera offert som skickad.')
+    }
   }
 
   const filteredQuotes = quotes.filter(quote => {
@@ -498,7 +417,11 @@ const QuotesPage: React.FC = () => {
         isOpen={showCreateQuote}
         onClose={() => setShowCreateQuote(false)}
         products={products}
-        customers={[]} // Nu hämtas kunder direkt från databasen i CreateQuote
+        customers={[]}
+        onQuoteCreated={async () => {
+          await loadQuotes()
+          setShowCreateQuote(false)
+        }}
       />
 
       {/* Product Library Modal */}

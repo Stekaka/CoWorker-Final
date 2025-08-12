@@ -29,23 +29,81 @@ export class QuoteService {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User not authenticated')
 
-      const { data, error } = await supabase
+  const companyId = await UserCompanyService.getUserPrimaryCompany()
+  if (!companyId) return []
+      let sbq = supabase
         .from('quotes')
-        .select(`
-          *,
-          customers!inner(id, name, email, company_name, phone, address, city, postal_code),
-          quote_items(*)
-        `)
-        .eq('user_id', user.id)
+        .select('*')
         .order('created_at', { ascending: false })
+
+      if (companyId) {
+        sbq = sbq.eq('company_id', companyId)
+      }
+
+      const { data, error } = await sbq
 
       if (error) throw error
 
-      return data?.map(quote => ({
-        ...quote,
-        customer: Array.isArray(quote.customers) ? quote.customers[0] : quote.customers,
-        items: quote.quote_items || []
-      })) || []
+      const quotes = (data || []) as Quote[]
+      if (quotes.length === 0) return []
+      const quoteIds = quotes.map(q => q.id)
+      const customerIds = Array.from(new Set(quotes.map(q => q.customer_id).filter(Boolean))) as string[]
+
+      const [{ data: itemsData }, customersRes] = await Promise.all([
+        supabase.from('quote_items').select('*').in('quote_id', quoteIds),
+        customerIds.length > 0
+          ? supabase
+              .from('customers')
+              .select('id, name, email, company_name, phone, address, city, postal_code')
+              .in('id', customerIds)
+          : Promise.resolve({ data: [] as unknown })
+      ])
+      type CustomerDb = {
+        id: string
+        name: string
+        email: string | null
+        company_name?: string | null
+        phone?: string | null
+        address?: string | null
+        city?: string | null
+        postal_code?: string | null
+      }
+      type CustomerLite = {
+        id: string
+        name: string
+        email: string
+        company_name?: string
+        phone?: string
+        address?: string
+        city?: string
+        postal_code?: string
+      }
+      const itemsByQuote = new Map<string, QuoteItem[]>()
+      ;(itemsData || []).forEach((it: QuoteItem) => {
+        const arr = itemsByQuote.get(it.quote_id) || []
+        arr.push(it)
+        itemsByQuote.set(it.quote_id, arr)
+      })
+      const customersArray: CustomerDb[] = (customersRes as { data?: unknown })?.data as CustomerDb[] || []
+      const customersById = new Map<string, CustomerLite>()
+      customersArray.forEach((c) =>
+        customersById.set(String(c.id), {
+          id: c.id,
+          name: c.name,
+          email: c.email ?? '',
+          company_name: c.company_name ?? undefined,
+          phone: c.phone ?? undefined,
+          address: c.address ?? undefined,
+          city: c.city ?? undefined,
+          postal_code: c.postal_code ?? undefined,
+        })
+      )
+
+      return quotes.map(q => ({
+        ...(q as Quote),
+        items: itemsByQuote.get(q.id) || [],
+        customer: q.customer_id ? customersById.get(q.customer_id) || undefined : undefined,
+      }))
     } catch (error) {
       console.error('Error fetching quotes:', error)
       return []
@@ -55,22 +113,53 @@ export class QuoteService {
   // Hämta offert med ID
   static async getQuote(id: string): Promise<QuoteWithItems | null> {
     try {
-      const { data, error } = await supabase
+  const { data, error } = await supabase
         .from('quotes')
-        .select(`
-          *,
-          customers!inner(id, name, email, company_name, phone, address, city, postal_code),
-          quote_items(*)
-        `)
+        .select('*')
         .eq('id', id)
         .single()
 
       if (error) throw error
 
+      const quote = data as Quote
+      const [{ data: items }, customerRes] = await Promise.all([
+        supabase.from('quote_items').select('*').eq('quote_id', quote.id),
+        quote.customer_id
+          ? supabase
+              .from('customers')
+              .select('id, name, email, company_name, phone, address, city, postal_code')
+              .eq('id', quote.customer_id)
+              .single()
+          : Promise.resolve({ data: undefined as unknown })
+      ])
+      const customerDb = (customerRes as { data?: unknown })?.data as
+        | {
+            id: string
+            name: string
+            email: string | null
+            company_name?: string | null
+            phone?: string | null
+            address?: string | null
+            city?: string | null
+            postal_code?: string | null
+          }
+        | undefined
+      const customer = customerDb
+        ? {
+            id: customerDb.id,
+            name: customerDb.name,
+            email: customerDb.email ?? '',
+            company_name: customerDb.company_name ?? undefined,
+            phone: customerDb.phone ?? undefined,
+            address: customerDb.address ?? undefined,
+            city: customerDb.city ?? undefined,
+            postal_code: customerDb.postal_code ?? undefined,
+          }
+        : undefined
       return {
-        ...data,
-        customer: Array.isArray(data.customers) ? data.customers[0] : data.customers,
-        items: data.quote_items || []
+        ...(quote as Quote),
+        customer,
+        items: (items || []) as QuoteItem[]
       }
     } catch (error) {
       console.error('Error fetching quote:', error)
@@ -87,8 +176,8 @@ export class QuoteService {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User not authenticated')
 
-      const companyId = await UserCompanyService.getUserPrimaryCompany(user.id)
-      if (!companyId) throw new Error('User not associated with any company')
+  const companyId = await UserCompanyService.getUserPrimaryCompany()
+  if (!companyId) throw new Error('User not associated with any company')
 
       // Generera offertnummer
       const { data: quoteNumber, error: numberError } = await supabase
@@ -98,12 +187,12 @@ export class QuoteService {
         throw new Error('Could not generate quote number')
       }
 
-      // Skapa offerten
-      const insert: QuoteInsert = {
+      // Skapa offerten (anm: verkligt schema använder created_by, inte user_id)
+  const insert: Partial<QuoteInsert> & { created_by: string } = {
         ...quoteData,
-        user_id: user.id,
         company_id: companyId,
-        quote_number: quoteNumber
+        quote_number: quoteNumber,
+        created_by: user.id,
       }
 
       const { data: quote, error: quoteError } = await supabase
@@ -171,29 +260,87 @@ export class QuoteService {
   }
 
   // Sök offerter
-  static async searchQuotes(query: string): Promise<QuoteWithItems[]> {
+  static async searchQuotes(term: string): Promise<QuoteWithItems[]> {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User not authenticated')
 
-      const { data, error } = await supabase
+  const companyId = await UserCompanyService.getUserPrimaryCompany()
+  if (!companyId) return []
+      let sbq = supabase
         .from('quotes')
-        .select(`
-          *,
-          customers!inner(id, name, email, company_name, phone, address, city, postal_code),
-          quote_items(*)
-        `)
-        .eq('user_id', user.id)
-        .or(`quote_number.ilike.%${query}%,title.ilike.%${query}%`)
+        .select('*')
+        .or(`quote_number.ilike.%${term}%,title.ilike.%${term}%`)
         .order('created_at', { ascending: false })
+
+      if (companyId) {
+        sbq = sbq.eq('company_id', companyId)
+      }
+
+      const { data, error } = await sbq
 
       if (error) throw error
 
-      return data?.map(quote => ({
-        ...quote,
-        customer: Array.isArray(quote.customers) ? quote.customers[0] : quote.customers,
-        items: quote.quote_items || []
-      })) || []
+      const quotes = (data || []) as Quote[]
+      if (quotes.length === 0) return []
+      const quoteIds = quotes.map(q => q.id)
+      const customerIds = Array.from(new Set(quotes.map(q => q.customer_id).filter(Boolean))) as string[]
+
+      const [{ data: itemsData }, customersRes] = await Promise.all([
+        supabase.from('quote_items').select('*').in('quote_id', quoteIds),
+        customerIds.length > 0
+          ? supabase
+              .from('customers')
+              .select('id, name, email, company_name, phone, address, city, postal_code')
+              .in('id', customerIds)
+          : Promise.resolve({ data: [] as unknown })
+      ])
+      const itemsByQuote = new Map<string, QuoteItem[]>()
+      ;(itemsData || []).forEach((it: QuoteItem) => {
+        const arr = itemsByQuote.get(it.quote_id) || []
+        arr.push(it)
+        itemsByQuote.set(it.quote_id, arr)
+      })
+      type CustomerDb2 = {
+        id: string
+        name: string
+        email: string | null
+        company_name?: string | null
+        phone?: string | null
+        address?: string | null
+        city?: string | null
+        postal_code?: string | null
+      }
+      type CustomerLite2 = {
+        id: string
+        name: string
+        email: string
+        company_name?: string
+        phone?: string
+        address?: string
+        city?: string
+        postal_code?: string
+      }
+      const customersArray: CustomerDb2[] = (customersRes as { data?: unknown })?.data as CustomerDb2[] || []
+      const customersById = new Map<string, CustomerLite2>()
+      customersArray.forEach((c) =>
+        customersById.set(String(c.id), {
+          id: c.id,
+          name: c.name,
+          email: c.email ?? '',
+          company_name: c.company_name ?? undefined,
+          phone: c.phone ?? undefined,
+          address: c.address ?? undefined,
+          city: c.city ?? undefined,
+          postal_code: c.postal_code ?? undefined,
+        })
+      )
+
+      return quotes.map(q => ({
+        ...(q as Quote),
+        items: itemsByQuote.get(q.id) || [],
+        customer: q.customer_id ? customersById.get(q.customer_id) || undefined : undefined,
+      }))
     } catch (error) {
       console.error('Error searching quotes:', error)
       return []
@@ -210,24 +357,84 @@ export class QuoteService {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User not authenticated')
 
-      const { data, error } = await supabase
+      const companyId = await UserCompanyService.getUserPrimaryCompany()
+      if (!companyId) {
+        return []
+      }
+      let sbq = supabase
         .from('quotes')
-        .select(`
-          *,
-          customers!inner(id, name, email, company_name, phone, address, city, postal_code),
-          quote_items(*)
-        `)
-        .eq('user_id', user.id)
+        .select('*')
         .eq('status', status)
         .order('created_at', { ascending: false })
 
+      if (companyId) {
+        sbq = sbq.eq('company_id', companyId)
+      }
+
+      const { data, error } = await sbq
+
       if (error) throw error
 
-      return data?.map(quote => ({
-        ...quote,
-        customer: Array.isArray(quote.customers) ? quote.customers[0] : quote.customers,
-        items: quote.quote_items || []
-      })) || []
+      const quotes = (data || []) as Quote[]
+      if (quotes.length === 0) return []
+      const quoteIds = quotes.map(q => q.id)
+      const customerIds = Array.from(new Set(quotes.map(q => q.customer_id).filter(Boolean))) as string[]
+
+      const [{ data: itemsData }, customersRes] = await Promise.all([
+        supabase.from('quote_items').select('*').in('quote_id', quoteIds),
+        customerIds.length > 0
+          ? supabase
+              .from('customers')
+              .select('id, name, email, company_name, phone, address, city, postal_code')
+              .in('id', customerIds)
+          : Promise.resolve({ data: [] as unknown })
+      ])
+      const itemsByQuote = new Map<string, QuoteItem[]>()
+      ;(itemsData || []).forEach((it: QuoteItem) => {
+        const arr = itemsByQuote.get(it.quote_id) || []
+        arr.push(it)
+        itemsByQuote.set(it.quote_id, arr)
+      })
+      type CustomerDb3 = {
+        id: string
+        name: string
+        email: string | null
+        company_name?: string | null
+        phone?: string | null
+        address?: string | null
+        city?: string | null
+        postal_code?: string | null
+      }
+      type CustomerLite3 = {
+        id: string
+        name: string
+        email: string
+        company_name?: string
+        phone?: string
+        address?: string
+        city?: string
+        postal_code?: string
+      }
+      const customersArray: CustomerDb3[] = (customersRes as { data?: unknown })?.data as CustomerDb3[] || []
+      const customersById = new Map<string, CustomerLite3>()
+      customersArray.forEach((c) =>
+        customersById.set(String(c.id), {
+          id: c.id,
+          name: c.name,
+          email: c.email ?? '',
+          company_name: c.company_name ?? undefined,
+          phone: c.phone ?? undefined,
+          address: c.address ?? undefined,
+          city: c.city ?? undefined,
+          postal_code: c.postal_code ?? undefined,
+        })
+      )
+
+      return quotes.map(q => ({
+        ...(q as Quote),
+        items: itemsByQuote.get(q.id) || [],
+        customer: q.customer_id ? customersById.get(q.customer_id) || undefined : undefined,
+      }))
     } catch (error) {
       console.error('Error fetching quotes by status:', error)
       return []
@@ -277,10 +484,33 @@ export class QuoteService {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User not authenticated')
 
-      const { data, error } = await supabase
+  const companyId = await UserCompanyService.getUserPrimaryCompany()
+      if (!companyId) {
+        return {
+          totalQuotes: 0,
+          statusCounts: {
+            draft: 0,
+            sent: 0,
+            viewed: 0,
+            accepted: 0,
+            rejected: 0,
+            expired: 0
+          },
+          totalValue: 0,
+          acceptedValue: 0,
+          quotesThisMonth: 0,
+          conversionRate: 0
+        }
+      }
+      let sbq = supabase
         .from('quotes')
         .select('status, total_amount, created_at')
-        .eq('user_id', user.id)
+
+      if (companyId) {
+        sbq = sbq.eq('company_id', companyId)
+      }
+
+      const { data, error } = await sbq
 
       if (error) throw error
 

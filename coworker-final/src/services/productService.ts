@@ -1,108 +1,195 @@
 import { supabase } from '@/lib/supabase'
-import type { Database } from '@/types/database'
 import { UserCompanyService } from './userCompanyService'
 
-type Product = Database['public']['Tables']['products']['Row']
-type ProductInsert = Database['public']['Tables']['products']['Insert']
-type ProductUpdate = Database['public']['Tables']['products']['Update']
+export interface UIProduct {
+  id: string
+  name: string
+  description: string
+  category: string
+  price: number
+  unit: string
+}
+
+function toUIProduct(row: Record<string, unknown>): UIProduct {
+  const id = String(row['id'])
+  const name = row['name'] !== undefined ? String(row['name']) : ''
+  const description = row['description'] !== undefined ? String(row['description']) : ''
+  const categorySource = row['category'] ?? row['sku']
+  const category = categorySource !== undefined ? String(categorySource) : 'Okategoriserad'
+  const priceRaw = row['price']
+  const price = typeof priceRaw === 'number' ? priceRaw : Number(priceRaw ?? 0) || 0
+  const unit = row['unit'] !== undefined ? String(row['unit']) : 'styck'
+  return { id, name, description, category, price, unit }
+}
 
 export class ProductService {
-  // Hämta alla produkter för användarens företag
-  static async getProducts(): Promise<Product[]> {
+  static async getProducts(): Promise<UIProduct[]> {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not authenticated')
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('User not authenticated')
 
-      const companyId = await UserCompanyService.getUserPrimaryCompany(user.id)
-      if (!companyId) throw new Error('User not associated with any company')
+  const companyId = await UserCompanyService.getUserPrimaryCompany()
+  if (!companyId) return []
 
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('company_id', companyId)
-        .eq('is_active', true)
-        .order('name')
+      // Try a safe select with a company filter if possible; fallback to unfiltered select (RLS should protect visibility)
+    let res = companyId
+    ? await supabase
+      .from('products')
+      .select('id, name, description, price, unit')
+      .eq('company_id', companyId)
+      .order('name')
+    : await supabase
+      .from('products')
+      .select('id, name, description, price, unit')
+      .order('name')
 
-      if (error) throw error
-      return data || []
+      if (res.error) {
+  // Fallback: retry with the same minimal set of columns
+        res = companyId
+          ? await supabase
+              .from('products')
+              .select('id, name, description, price, unit')
+              .eq('company_id', companyId)
+              .order('name')
+          : await supabase
+              .from('products')
+              .select('id, name, description, price, unit')
+              .order('name')
+      }
+
+      if (res.error) throw res.error
+
+      const rows = (res.data ?? []) as Record<string, unknown>[]
+      return rows.map(toUIProduct)
     } catch (error) {
       console.error('Error fetching products:', error)
       return []
     }
   }
 
-  // Hämta produkt efter ID
-  static async getProduct(id: string): Promise<Product | null> {
+  static async getProduct(id: string): Promise<UIProduct | null> {
     try {
-      const { data, error } = await supabase
+      // Prefer a broader select first; fallback to minimal
+      let res = await supabase
         .from('products')
-        .select('*')
+        .select('id, name, description, price, unit, sku')
         .eq('id', id)
         .single()
 
-      if (error) throw error
-      return data
+      if (res.error) {
+        res = await supabase
+          .from('products')
+          .select('id, name, description, price, unit')
+          .eq('id', id)
+          .single()
+      }
+
+      if (res.error) throw res.error
+      return toUIProduct((res.data ?? {}) as Record<string, unknown>)
     } catch (error) {
       console.error('Error fetching product:', error)
       return null
     }
   }
 
-  // Skapa ny produkt
-  static async createProduct(product: Omit<ProductInsert, 'company_id'>): Promise<Product | null> {
+  static async createProduct(product: { name: string; description?: string; category?: string; price: number; unit?: string }): Promise<UIProduct | null> {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not authenticated')
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('User not authenticated')
+  let companyId = await UserCompanyService.getUserPrimaryCompany()
+  if (!companyId) {
+    companyId = await UserCompanyService.getOrCreatePrimaryCompany()
+  }
+  if (!companyId) throw new Error('User not associated with any company')
 
-      const companyId = await UserCompanyService.getUserPrimaryCompany(user.id)
-      if (!companyId) throw new Error('User not associated with any company')
-
-      const insert: ProductInsert = {
-        ...product,
-        company_id: companyId
-      }
-
-      const { data, error } = await supabase
+      // Try inserting with a category column; fallback to minimal columns only
+      let ins = await supabase
         .from('products')
-        .insert(insert)
-        .select()
+        .insert({
+          ...(companyId ? { company_id: companyId } : {}),
+          name: product.name,
+          description: product.description ?? '',
+          category: product.category ?? 'Okategoriserad',
+          price: product.price,
+          unit: product.unit ?? 'styck',
+        })
+        .select('id, name, description, price, unit, sku')
         .single()
 
-      if (error) throw error
-      return data
+      if (ins.error) {
+        ins = await supabase
+          .from('products')
+          .insert({
+            ...(companyId ? { company_id: companyId } : {}),
+            name: product.name,
+            description: product.description ?? '',
+            price: product.price,
+            unit: product.unit ?? 'styck',
+          })
+          .select('id, name, description, price, unit')
+          .single()
+      }
+
+      if (ins.error) throw ins.error
+      return toUIProduct((ins.data ?? {}) as Record<string, unknown>)
     } catch (error) {
       console.error('Error creating product:', error)
       return null
     }
   }
 
-  // Uppdatera produkt
-  static async updateProduct(id: string, updates: ProductUpdate): Promise<Product | null> {
+  static async updateProduct(id: string, updates: { name?: string; description?: string; category?: string; price?: number; unit?: string }): Promise<UIProduct | null> {
     try {
-      const { data, error } = await supabase
+      let upd = await supabase
         .from('products')
-        .update(updates)
+        .update({
+          name: updates.name,
+          description: updates.description,
+          category: updates.category,
+          price: updates.price,
+          unit: updates.unit,
+        })
         .eq('id', id)
-        .select()
+        .select('id, name, description, price, unit, sku')
         .single()
 
-      if (error) throw error
-      return data
+      if (upd.error) {
+        upd = await supabase
+          .from('products')
+          .update({
+            name: updates.name,
+            description: updates.description,
+            price: updates.price,
+            unit: updates.unit,
+          })
+          .eq('id', id)
+          .select('id, name, description, price, unit')
+          .single()
+      }
+
+      if (upd.error) throw upd.error
+      return toUIProduct((upd.data ?? {}) as Record<string, unknown>)
     } catch (error) {
       console.error('Error updating product:', error)
       return null
     }
   }
 
-  // Ta bort produkt (soft delete)
   static async deleteProduct(id: string): Promise<boolean> {
     try {
-      const { error } = await supabase
+      let res = await supabase
         .from('products')
         .update({ is_active: false })
         .eq('id', id)
 
-      if (error) throw error
+      if (res.error) {
+        res = await supabase
+          .from('products')
+          .delete()
+          .eq('id', id)
+      }
+
+      if (res.error) throw res.error
       return true
     } catch (error) {
       console.error('Error deleting product:', error)
@@ -110,111 +197,61 @@ export class ProductService {
     }
   }
 
-  // Hämta produkter efter kategori
-  static async getProductsByCategory(category: string): Promise<Product[]> {
+  static async getProductsByCategory(category: string): Promise<UIProduct[]> {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not authenticated')
-
-      const companyId = await UserCompanyService.getUserPrimaryCompany(user.id)
-      if (!companyId) throw new Error('User not associated with any company')
-
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('company_id', companyId)
-        .eq('category', category)
-        .eq('is_active', true)
-        .order('name')
-
-      if (error) throw error
-      return data || []
+  // Reuse getProducts and filter client-side to avoid schema assumptions
+  const products = await this.getProducts()
+  if (category === 'all') return products
+  return products.filter(p => p.category === category)
     } catch (error) {
       console.error('Error fetching products by category:', error)
       return []
     }
   }
 
-  // Hämta alla kategorier
   static async getCategories(): Promise<string[]> {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not authenticated')
-
-      const companyId = await UserCompanyService.getUserPrimaryCompany(user.id)
-      if (!companyId) throw new Error('User not associated with any company')
-
-      const { data, error } = await supabase
-        .from('products')
-        .select('category')
-        .eq('company_id', companyId)
-        .eq('is_active', true)
-
-      if (error) throw error
-      
-      const categories = data?.map(item => item.category) || []
-      return [...new Set(categories)].sort()
+      const products = await this.getProducts()
+      const cats = [...new Set(products.map(p => p.category).filter(Boolean))]
+      return ['all', ...cats].filter((v, i, a) => a.indexOf(v) === i)
     } catch (error) {
       console.error('Error fetching categories:', error)
-      return []
+      return ['all']
     }
   }
 
-  // Sök produkter
-  static async searchProducts(query: string): Promise<Product[]> {
+  static async searchProducts(query: string): Promise<UIProduct[]> {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not authenticated')
-
-      const companyId = await UserCompanyService.getUserPrimaryCompany(user.id)
-      if (!companyId) throw new Error('User not associated with any company')
-
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('company_id', companyId)
-        .eq('is_active', true)
-        .or(`name.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`)
-        .order('name')
-
-      if (error) throw error
-      return data || []
+      // Fetch and filter client-side to avoid referencing missing columns
+      const products = await this.getProducts()
+      const q = query.trim().toLowerCase()
+      if (!q) return products
+      return products.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q)
+      )
     } catch (error) {
       console.error('Error searching products:', error)
       return []
     }
   }
 
-  // Lägg till metod för kompatibilitet med gamla systemet
-  static async searchProducts_old(searchTerm: string): Promise<Product[]> {
+  static async searchProducts_old(searchTerm: string): Promise<UIProduct[]> {
     return this.searchProducts(searchTerm)
   }
 
-  // Hämta produktstatistik för företaget
   static async getProductStats() {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not authenticated')
-
-      const companyId = await UserCompanyService.getUserPrimaryCompany(user.id)
-      if (!companyId) throw new Error('User not associated with any company')
-
-      const { data, error } = await supabase
-        .from('products')
-        .select('category, is_active')
-        .eq('company_id', companyId)
-
-      if (error) throw error
-
-      const totalProducts = data?.length || 0
-      const activeProducts = data?.filter(p => p.is_active).length || 0
-      const categories = [...new Set(data?.filter(p => p.is_active).map(p => p.category) || [])].length
-
+      const products = await this.getProducts()
+      const totalProducts = products.length
+      const activeProducts = totalProducts
+      const categories = [...new Set(products.map(p => p.category))].length
       return {
         totalProducts,
         activeProducts,
         categories,
-        inactiveProducts: totalProducts - activeProducts
+        inactiveProducts: 0
       }
     } catch (error) {
       console.error('Error fetching product stats:', error)

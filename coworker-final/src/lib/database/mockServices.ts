@@ -316,7 +316,7 @@ const mockDashboardStats: DashboardStats = {
   ).length,
   pipeline_value: mockDeals
     .filter(deal => deal.stage !== 'won' && deal.stage !== 'lost')
-    .reduce((sum, deal) => sum + deal.amount * (deal.probability / 100), 0),
+  .reduce((sum, deal) => sum + deal.amount * ((deal.probability ?? 0) / 100), 0),
   conversion_rate: 25.5, // Example conversion rate
   average_deal_size: mockDeals.reduce((sum, deal) => sum + deal.amount, 0) / mockDeals.length,
   tasks_due_today: mockTasks.filter(task => 

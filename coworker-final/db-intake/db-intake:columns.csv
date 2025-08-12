@@ -1,0 +1,95 @@
+table_name,column_name,data_type,is_nullable,column_default
+companies,id,uuid,NO,gen_random_uuid()
+companies,name,text,NO,null
+companies,created_at,timestamp with time zone,NO,now()
+companies,updated_at,timestamp with time zone,NO,now()
+contacts,id,uuid,NO,gen_random_uuid()
+contacts,company_id,uuid,NO,null
+contacts,name,text,NO,null
+contacts,email,text,YES,null
+contacts,phone,text,YES,null
+contacts,position,text,YES,null
+contacts,created_by,uuid,YES,null
+contacts,created_at,timestamp with time zone,NO,now()
+contacts,updated_at,timestamp with time zone,NO,now()
+customers,id,uuid,NO,gen_random_uuid()
+customers,company_id,uuid,NO,null
+customers,name,text,NO,null
+customers,email,text,YES,null
+customers,phone,text,YES,null
+customers,billing_address,jsonb,YES,null
+customers,notes,text,YES,null
+customers,created_by,uuid,YES,null
+customers,created_at,timestamp with time zone,NO,now()
+customers,updated_at,timestamp with time zone,NO,now()
+notes,id,uuid,NO,gen_random_uuid()
+notes,company_id,uuid,NO,null
+notes,entity_type,USER-DEFINED,NO,null
+notes,entity_id,uuid,NO,null
+notes,body,text,NO,null
+notes,created_by,uuid,YES,null
+notes,created_at,timestamp with time zone,NO,now()
+notes,updated_at,timestamp with time zone,NO,now()
+order_items,id,uuid,NO,gen_random_uuid()
+order_items,order_id,uuid,NO,null
+order_items,product_id,uuid,YES,null
+order_items,description,text,YES,null
+order_items,quantity,numeric,NO,1
+order_items,unit_price,numeric,NO,0
+order_items,total_amount,numeric,NO,0
+orders,id,uuid,NO,gen_random_uuid()
+orders,company_id,uuid,NO,null
+orders,customer_id,uuid,YES,null
+orders,status,USER-DEFINED,NO,'draft'::order_status
+orders,currency,text,NO,'SEK'::text
+orders,total_amount,numeric,NO,0
+orders,created_by,uuid,YES,null
+orders,created_at,timestamp with time zone,NO,now()
+orders,updated_at,timestamp with time zone,NO,now()
+products,id,uuid,NO,gen_random_uuid()
+products,company_id,uuid,NO,null
+products,name,text,NO,null
+products,sku,text,YES,null
+products,unit,text,YES,'pcs'::text
+products,price,numeric,NO,0
+products,currency,text,NO,'SEK'::text
+products,description,text,YES,null
+products,created_by,uuid,YES,null
+products,created_at,timestamp with time zone,NO,now()
+products,updated_at,timestamp with time zone,NO,now()
+profiles,id,uuid,NO,null
+profiles,full_name,text,YES,null
+profiles,avatar_url,text,YES,null
+profiles,created_at,timestamp with time zone,NO,now()
+profiles,updated_at,timestamp with time zone,NO,now()
+quote_items,id,uuid,NO,gen_random_uuid()
+quote_items,quote_id,uuid,NO,null
+quote_items,product_id,uuid,YES,null
+quote_items,description,text,YES,null
+quote_items,quantity,numeric,NO,1
+quote_items,unit_price,numeric,NO,0
+quote_items,total_amount,numeric,NO,0
+quotes,id,uuid,NO,gen_random_uuid()
+quotes,company_id,uuid,NO,null
+quotes,customer_id,uuid,YES,null
+quotes,status,USER-DEFINED,NO,'draft'::quote_status
+quotes,currency,text,NO,'SEK'::text
+quotes,total_amount,numeric,NO,0
+quotes,valid_until,date,YES,null
+quotes,created_by,uuid,YES,null
+quotes,created_at,timestamp with time zone,NO,now()
+quotes,updated_at,timestamp with time zone,NO,now()
+tasks,id,uuid,NO,gen_random_uuid()
+tasks,company_id,uuid,NO,null
+tasks,title,text,NO,null
+tasks,description,text,YES,null
+tasks,status,USER-DEFINED,NO,'todo'::task_status
+tasks,due_date,date,YES,null
+tasks,assigned_to,uuid,YES,null
+tasks,created_by,uuid,YES,null
+tasks,created_at,timestamp with time zone,NO,now()
+tasks,updated_at,timestamp with time zone,NO,now()
+user_companies,user_id,uuid,NO,null
+user_companies,company_id,uuid,NO,null
+user_companies,role,USER-DEFINED,NO,'owner'::user_role
+user_companies,created_at,timestamp with time zone,NO,now()
